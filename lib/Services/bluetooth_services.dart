@@ -11,6 +11,27 @@ import 'package:get/get.dart';
 class BlueToothService extends GetxController {
   BluetoothState bluetoothState = BluetoothState.UNKNOWN;
 
+  static final clientID = 0;
+
+  // late final BluetoothDevice server;
+  List<_Message> messages = List<_Message>.empty(growable: true);
+  String _messageBuffer = '';
+
+  BluetoothConnection? connection;
+
+  Function takePictureCallback = (String folder) async {};
+  String ?folderName;
+
+
+  bool isDisconnecting = false;
+  bool isConnecting = true;
+  bool get isConnected => (connection?.isConnected ?? false);
+
+  List<_DeviceWithAvailability> devices =
+  List<_DeviceWithAvailability>.empty(growable: true);
+  bool connected = false;
+
+
   String _address = "...";
   String _name = "...";
   bool _autoAcceptPairingRequests = false;
@@ -20,20 +41,11 @@ class BlueToothService extends GetxController {
 
 //  final bool _autoAcceptPairingRequests = false;
 
-  BlueToothService(){
-    connection!.input!.listen((Uint8List data) {
-      print('Data incoming: ${ascii.decode(data)}');
-      Fluttertoast.showToast(msg: ascii.decode(data));
 
-      if (ascii.decode(data).contains('!')) {
-        connection!.finish(); // Closing connection
-        print('Disconnecting by local host');
-      }
-    }).onDone(() {
-      print('Disconnected by remote request');
-    });
+  setFolderName(String _folderName){
+    folderName=_folderName;
+    print("Folder Name"+_folderName);
   }
-
 
   Future initialize() async {
     BluetoothState state = await FlutterBluetoothSerial.instance.state;
@@ -86,23 +98,7 @@ class BlueToothService extends GetxController {
     update();
   }
 
-  static final clientID = 0;
-
-  late final BluetoothDevice server;
-  List<_Message> messages = List<_Message>.empty(growable: true);
-  String _messageBuffer = '';
-
-  BluetoothConnection? connection;
-
-  bool isDisconnecting = false;
-  bool isConnecting = true;
-  bool get isConnected => (connection?.isConnected ?? false);
-
-  List<_DeviceWithAvailability> devices =
-      List<_DeviceWithAvailability>.empty(growable: true);
-  bool connected = false;
-
-  disconnectFromBlueTooth() async {
+disconnectFromBlueTooth() async {
     if (connection!.isConnected) {}
     connection!.dispose();
     connected = false;
@@ -118,6 +114,7 @@ class BlueToothService extends GetxController {
       print(element.name);
       if (element.name == 'HC-05') {
         server1 = element;
+        // server = server1;
       }
     });
 
@@ -128,7 +125,40 @@ class BlueToothService extends GetxController {
 
       isConnecting = false;
       isDisconnecting = false;
+      var count=0;
+      connection!.input!.listen((Uint8List data) async {
 
+
+
+        print('Data incoming: ${ascii.decode(data)}');
+        Fluttertoast.showToast(msg: ascii.decode(data));
+          Map<String,dynamic> jsonData=  json.decode(ascii.decode(data).toString());
+
+         int degree=  jsonData["degree"];
+
+          if(jsonData["status"].toString().toLowerCase()=="ok" && count<360){
+            await takePictureCallback(folderName);
+            sendMessage(ascii.decode(data));
+          }
+          if (count>=360){
+            count=0;
+          }
+        count=count+degree;
+        /*
+        * Does data have status:ok? then send message()
+        * and
+        * Data should accumulate to 360 degree
+        * */
+
+        // print(ascii.decode(data));
+        // if (ascii.decode(data).toLowerCase().contains('ok')) {
+        //   connection!.close(); // Closing connection
+        //
+        //   print('Disconnecting by local host');
+        // }
+      }).onDone(() {
+        print('Disconnected by remote request');
+      });
       //   connection!.input!.listen(_onDataReceived).onDone(() {
       //     // print(data);
       //     // Example: Detect which side closed the connection
@@ -158,18 +188,6 @@ class BlueToothService extends GetxController {
 
         connection!.output.add(Uint8List.fromList(utf8.encode(text)));
         connection!.output.allSent.then((value) {
-
-          connection!.input!.listen((Uint8List data) {
-            print('Data incoming: ${ascii.decode(data)}');
-            Fluttertoast.showToast(msg: ascii.decode(data));
-
-            if (ascii.decode(data).contains('!')) {
-              connection!.finish(); // Closing connection
-              print('Disconnecting by local host');
-            }
-          }).onDone(() {
-            print('Disconnected by remote request');
-          });
         });
 
 
@@ -194,13 +212,13 @@ class BlueToothService extends GetxController {
     // }
   }
 
-  receivedData() async {
-    connection = await BluetoothConnection.toAddress(server.address);
-    connection!.input!.listen((event) {
-      print(event);
-      Fluttertoast.showToast(msg: event.toString());
-    });
-  }
+  // receivedData() async {
+  //   connection = await BluetoothConnection.toAddress(server.address);
+  //   connection!.input!.listen((event) {
+  //     print(event);
+  //     Fluttertoast.showToast(msg: event.toString());
+  //   });
+  // }
 
   void _onDataReceived(Uint8List data) {
     // Allocate buffer for parsed data

@@ -110,7 +110,7 @@ class _DiscoveryPage extends State<DiscoveryPage> {
             device: device,
             rssi: result.rssi,
             onTap: () {
-              Navigator.of(context).pop(result.device);
+             // Navigator.of(context).pop(result.device);
             },
             onLongPress: () async {
               try {
