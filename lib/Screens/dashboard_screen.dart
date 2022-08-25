@@ -278,7 +278,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           "degreesPerSecond": speedController.text
         };
         if (nameController.text.isNotEmpty) {
-          //_takePhoto(nameController.text);
+         // _takePhoto(nameController.text);
           blueToothService.setFolderName(nameController.text);
           nameController.clear();
           Navigator.pop(context);
